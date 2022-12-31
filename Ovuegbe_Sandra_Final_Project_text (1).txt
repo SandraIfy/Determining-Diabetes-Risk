@@ -1,0 +1,192 @@
+Sandra Ovuegbe Final Project PH1700
+=========================================
+~~~~
+<<dd_do: quietly>>
+*Programmer: Sandra Ovuegbe
+*Date: 10/18/2021
+*Description: This text contains commands for Final Project part 1 and 2 
+*Text contained in << >> <</>> is read as STATA code, everything is read as Markdown
+use "H:\.dta folder\pimaindians1500_08302021-2.dta"
+<</dd_do>>
+~~~~ 
+Take Continous variables: Plasgluc, insulin2h
+Take Categorical variables: Age group, dbpgroup, smoking_status
+
+Labelling our categorical variables 
+~~~~
+<<dd_do>>
+label values dm dm
+label define agegroup 0 "less than 35" 1 "35 above", replace
+label values agegroup agegroup
+label define smoking_status 1 "cigarettes" 2 "e-cigarettes" 3 "cigars" 4 "non-smoker" 5 "dual tobacco products"
+label values smoking_status smoking_status
+label define dbpgroup 0 "not_high_bp" 1 "high_bp"
+label values dbpgroup dbpgroup
+<</dd_do>>
+~~~~
+
+Assessing continous variables for normality (box plot, histogram, quintile-quantile plots and Shapiro Wilk test)
+
+~~~~
+<<dd_do:nocommands>>
+graph box plasgluc, over(dm) title(Box plot of plasma glucose concentration at 2 hours by diabetes diagnosis)
+graph box insulin2h, over(dm) title(Boxplot of 2 hour serum insulin by diabetes diagnosis)
+
+hist plasgluc 
+hist insulin 
+
+qnorm plasgluc
+qnorm insulin2h
+
+swilk plasgluc 
+swilk insulin2h
+<</dd_do>>
+~~~~
+*Swilk tests pvalues were all <0.001 and plots are skewed, but sample size is large enough so we assume CLT
+
+Requested graph of 2 hr serum insulin by diastolic bp group
+~~~~
+<<dd_do:nocommands>>
+graph box insulin2h, over(dbpgroup) title(Box plot of 2 hour serum insulin by diastolic bp group)
+<</dd_do>>
+~~~~
+Computing summary statistic (mean and SD) for key continuous variables
+~~~~
+<<dd_do>> 
+by dm, sort : summarize plasgluc
+by dm, sort : summarize insulin2h
+summarize insulin2h 
+summarize plasgluc
+<</dd_do>>
+~~~~
+Frequency statistics, Categorical variables
+~~~~
+<<dd_do>> 
+tabulate dbpgroup dm
+tabulate agegroup dm
+tabulate smoking_status dm
+<</dd_do>>
+~~~~
+Part 2 
+
+*Is there difference in mean plasma glucose conc in participants that have diabetes and do not have diabetes?
+*Variable of interest: mean plasma glucose conc 
+*Parameter of interest: Difference in mean plasma glucose conc between diabetes and non diabetes partcipants
+*Test statistic- We conduct a 2 sided 2-sample t-test of means with equal or unequal variances, but first we have to determine if the variances are equal 
+*Using alpha=0.05 and df=1006,492
+*Hnull= Variances are equal  Halt= Variances are not equal 
+*Decision factor: If pvalue < 0.05 variances are unequal If pvalue>0.05 variances are equal
+
+Performing an f test for equal variance with CI 95% to determine if diabetes and non diabetes participants have equal mean variance for plasma glucose concentration
+~~~~
+<<dd_do>>
+sdtest plasgluc, by(dm)
+<</dd_do>>
+~~~~
+*Pvalue < 0.05, Therefore we reject the null, Variances are unequal, so we use 2 indpendent sample ttest with unequal variances
+
+Next we conduct a 2 independent sample t-test of  with unequal variance, using degrees of freedom 872.6 
+Hnull : mean plasma glucose difference=0, Halternative : mean plasma glucose difference= /0
+~~~~
+<<dd_do>>
+ttest plasgluc, by(dm) unequal
+<</dd_do>>
+~~~~
+Pvalue <0.05 and CI does not inlcude 0, so we reject null and conclude there is a difference in plasma glucose conc between diabetes and non diabetes participants. 
+Also, we can conclude that diabetes group has greater mean plasma glucose concentration than the non-diabetes group
+
+Part 3 
+*Testing our second hypothesis 
+
+*Computing expected values for the 2x2 Contingency table
+~~~~
+<<dd_do>>
+tab dm dbpgroup, exp
+<</dd_do>>
+~~~~
+*Computing chi square test for independence (large sample)
+~~~~
+<<dd_do>>
+tab dm dbpgroup, chi2 exp
+<</dd_do>>
+~~~~
+
+*Performing our first regression (Predictor variable: agegroup, Outcome variable: insulin2h)
+~~~~
+<<dd_do>>
+regress insulin2h ib0.agegroup      
+regress insulin2h ib1.agegroup
+<</dd_do>>
+~~~~
+
+*Performing second regression 
+<<dd_do>>
+regress insulin2h plasgluc
+<</dd_do>>
+
+*Performing our third regression: (Predictor variable: dpgroup, Outcome variable: insulin2h)
+~~~~
+<<dd_do>>
+regress insulin2h ib0.dbpgroup
+regress insulin2h ib1.dbpgroup
+<</dd_do>>
+~~~~
+
+**Performing our fourth regression: (Predictor variable: smoking_status, Outcome variable: insulin2h)
+*Creating dummy variables for smoking_status
+~~~~
+ <<dd_do>>
+tabulate smoking_status, gen(smokes)
+tab smoking_status smokes1
+tab smoking_status smokes2
+tab smoking_status smokes3
+tab smoking_status smokes4
+regress insulin2h smokes1 smokes2 smokes3 smokes4 smokes5
+regress insulin2h smokes5
+<</dd_do>>
+
+
+*Performing our multi variable regression (Final model)
+~~~~
+<<dd_do>>
+regress insulin2h plasgluc i.dbpgroup i.agegroup i.smoking_status
+<</dd_do>>
+~~~~
+
+Computing residuals and Checking assumptions for the Final Model 
+
+~~~~
+<<dd_do: quietly>>
+predict e2, residuals
+predict standresid2, rstandard
+predict studresid2, rstudent
+<</dd_do>>
+~~~~
+
+*Assessing normality for final model
+~~~~
+<<dd_do:nocommands>>
+qnorm e2
+qnorm standresid2
+qnorm studresid2
+hist e2, normal
+hist standresid2, normal
+hist studresid2, normal
+swilk e2
+swilk standresid2
+swilk studresid2
+twoway (scatter e2 insulin2h, msymbol(circle_hollow)) (qfit e2 insulin2h), ytitle(Residuals) xtitle(insulin2h)
+twoway (scatter standresid2 insulin2h, msymbol(circle_hollow)) (qfit standresid2 insulin2h), ytitle(standresid2) xtitle(insulin2h)
+twoway (scatter studresid2 insulin2h, msymbol(circle_hollow)) (qfit studresid2 insulin2h), ytitle(studresid2) xtitle(insulin2h)
+list e2
+<</dd_do>>
+~~~~
+
+The histogram plots for residuals did not follow the normal curve, they resembled a right skewed distribution 
+The q-q plots did not have most of the data points on the line, instead the points followed a curve across the regresion line 
+Shapiro wilk test results for normality of residuals gave pvalue <0.001 for unadjusted, studentized and standardized residuals. Normality assumption is not satisfied
+For homoscedasticity and linearity assumptions, we examined the residual scatter plot fitted against outcome variable insulin2h 
+We can see that most of the data points closely follow the diagonal regression line, meaning linearity assumption is satisfied 
+Homoscedasticity is also satisfied since there is no obvious pattern around the regression line
+Finally, the Independence assumption was checked using the list command to see if each observation was indepednent of the other. The assumption is satisfied since there is no indication of paired or matched observations 
+
