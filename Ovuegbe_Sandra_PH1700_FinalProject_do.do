@@ -44,29 +44,49 @@ tabulate smoking_status dm
 
 
 *Part 2 
-*Is there difference in mean plasma glucose conc in participants that have diabetes and do not have diabetes
+*Hypothesis: Is there difference in mean plasma glucose conc in participants that have diabetes and do not have diabetes?
 *Variable of interest: mean plasma glucose conc 
 *Parameter of interest: Difference in mean plasma glucose conc between diabetes and non diabetes partcipants
 *Test statistic- We conduct a 2 sided 2-sample t-test of means with equal or unequal variances, but first we have to determine if the variances are equal 
-*Using alpha=0.05 and df=?????????????
+*Using alpha=0.05 and df=1006,492
 
 *Performing an f test CI 95% to determine if diabetes and non diabetes participants have equal mean variance for plasma glucose concentration
 *alpha=0.05
-* Df= ??????
+* Df= 872.6
 *Hnull= Variances are equal  Halt= Variances are not equal 
- * Decision factor: If pvalue < 0.05 variances are unequal If pvalue>0.05 variances are equal 
+ * Decision factor: If pvalue < 0.05 variances are unequal but If pvalue>0.05 variances are equal 
 sdtest plasgluc, by(dm)
-*Pvalue < 0.05, Therefore rejcet the null and conclude tests are unequal 
+*Result:Pvalue < 0.05, Therefore reject the null and conclude tests are unequal 
 
-*Next we conduct a 2 sided 2-sample t-test of means with unequal variance 
+*Next we conduct a 2 sided 2 independent sample t-test of means with unequal variance 
 ttest plasgluc, by(dm) unequal
+*Result:Pvalue <0.05 and CI does not inlcude 0, so we reject null and conclude there is a difference in plasma glucose conc between diabetes and non diabetes participants. 
+Also, we can conclude that diabetes group has greater mean plasma glucose concentration than the non-diabetes group
 
 ****PART 3
-** Hypothesis 2 test 
-* Computing expected values for teh 2x2 Contingency table
+** Testing our second hypothesis 
+*Our second hypothesis is whether or not there is a difference in the
+diastolic blood pressure groups between those who have diabetes and those that do not.
+
+* Computing expected values for the 2x2 Contingency table
 tab dm dbpgroup, exp
+
+**We choose to perform a chi square test of independence large sample since
+all expected cells were greater than or equal to 5 and there was nothing in the data that suggested that samples were
+paired, so independence assumption was satisfied.
+
 ***Computing chi square test for independence (large sample)
 tab dm dbpgroup, chi2 exp
+
+**The chi square test for independence (large sample test) for our 2 nd hypothesis gave a X 2 statistic
+of 7.5335 with p value 0.006. Since we indicated that pvalue &lt; 0.05 is the rejection region, we
+reject our null hypothesis. Therefore, we conclude that there is sufficient evidence that the
+probability of having high bp and no high bp by is different for participants who have diabetes vs
+no diabetes.
+
+**Next, we run simple linear regression models to test the association between the dependent variable 2hour insulin levels and the
+independent variables: Age groups, Plasma glucose concentration, Diastolic blood pressure
+groups and smoking status.
 
 * Identifying missing variables 
 replace insulin2h= . if insulin2h== 9
@@ -75,21 +95,15 @@ replace plasgluc= . if plasgluc==9
 replace dbpgroup = . if dbpgroup==9
 replace smoking_status= . if smoking_status==9
 
-* 1) Regressing plasgluc 
+* Model 1) Regressing plasgluc 
 scatter insulin2h plasgluc
-**No relationship was found between insulin and plasma glucose conc so we transform plasma glucose 
+**No relationship was found between insulin and plasma glucose concentration, so we transform plasma glucose 
 qladder plasgluc
 gladder plasgluc
 
-* Assumptions for Simple Linear regression: If independent varaible is continuous, it shoudl be normal????
+* Check assumption for Simple Linear regression: normal residuals
 
-* Checking normaliity of dependent variable (insulin2h) and independent varaible  (plasgluc)
-swilk insulin2h
-swilk plasgluc
-**Perfrom regression (F test ANOVA table and t test)
-regress insulin2h plasgluc
-
-***2) Regressing agegroup 
+***Model 2) Regressing agegroup 
 * Creating dummy variables 
 tabulate agegroup, gen(age1)
 tab agegroup age11
@@ -97,7 +111,7 @@ tab agegroup age12
 *regression
 regress insulin2h age11 age12
 
-***3) Regressing dpgroup
+***Model 3) Regressing dpgroup
 *Creating dummy variables for dpbgroup 
 tabulate dbpgroup, gen(dpbs)
 tab dbpgroup dpbs1
@@ -105,7 +119,7 @@ tab dbpgroup dpbs2
 
 regress insulin2h dpbs1 dpbs2
 
-**Regressing smoking_status
+**Model 4)Regressing smoking_status
 *Creating dummy varaibles for smoking_status
 tabulate smoking_status, gen(smokes)
 tab smoking_status smokes1
@@ -114,10 +128,42 @@ tab smoking_status smokes3
 tab smoking_status smokes4
 regress insulin2h smokes1 smokes2 smokes3 smokes4 smokes5
  
+ **The only significant regression coefficient was for model 2,
+plasma glucose concentration (p value <=0.05). However, even with the significant test, only
+18.4% of the variation of 2hr insulin can be explained by the model.
 
-**Test of homogeneity (varaiance)
-**Do this for all independent variables
-sdtest insulin2h = plasgluc 
-sdtest insulin2h = agegroup
-**The vraible insulin2h is not constant for all age groups. We have aproblme with teh vraince since the varaince is not homogenouos 
-<0.001, homogeniety is not met. Variance will differ 
+
+*Performing our multi variable regression (Final model)
+
+regress insulin2h plasgluc i.dbpgroup i.agegroup i.smoking_status
+
+
+*Computing residuals and Checking assumptions for the Final Model 
+
+predict e2, residuals
+predict standresid2, rstandard
+predict studresid2, rstudent
+
+
+*Assessing normality of residuals for final model
+qnorm e2
+qnorm standresid2
+qnorm studresid2
+hist e2, normal
+hist standresid2, normal
+hist studresid2, normal
+swilk e2
+swilk standresid2
+swilk studresid2
+twoway (scatter e2 insulin2h, msymbol(circle_hollow)) (qfit e2 insulin2h), ytitle(Residuals) xtitle(insulin2h)
+twoway (scatter standresid2 insulin2h, msymbol(circle_hollow)) (qfit standresid2 insulin2h), ytitle(standresid2) xtitle(insulin2h)
+twoway (scatter studresid2 insulin2h, msymbol(circle_hollow)) (qfit studresid2 insulin2h), ytitle(studresid2) xtitle(insulin2h)
+list e2
+
+*The histogram plots for residuals did not follow the normal curve, they resembled a right skewed distribution 
+*The q-q plots did not have most of the data points on the line, instead the points followed a curve across the regresion line 
+*Shapiro wilk test results for normality of residuals gave pvalue <0.001 for unadjusted, studentized and standardized residuals. Normality assumption is not satisfied
+*For homoscedasticity and linearity assumptions, we examined the residual scatter plot fitted against outcome variable insulin2h 
+We can see that most of the data points closely follow the diagonal regression line, meaning linearity assumption is satisfied 
+Homoscedasticity is also satisfied since there is no obvious pattern around the regression line
+Finally, the Independence assumption was checked using the list command to see if each observation was indepednent of the other. The assumption is satisfied since there is no indication of paired or matched observations
