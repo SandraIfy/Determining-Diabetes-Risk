@@ -41,6 +41,7 @@ summarize plasgluc
 tabulate dbpgroup dm
 tabulate agegroup dm
 tabulate smoking_status dm
+*frequency table shows percentage of dependent variable in each independent varaible category. Total shows percentage of the variable category among total variable 
 
 
 *Part 2 
