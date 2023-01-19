@@ -89,7 +89,7 @@ no diabetes.
 independent variables: Age groups, Plasma glucose concentration, Diastolic blood pressure
 groups and smoking status.
 
-* Identifying missing variables 
+* Identifying missing values
 replace insulin2h= . if insulin2h== 9
 replace agegroup= . if agegroup== 9
 replace plasgluc= . if plasgluc==9
